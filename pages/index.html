@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Client H265 (ffmpeg.wasm)</title></head>
+<body>
+  <h2>Convert MKV → H.265 MP4 (client-side, ffmpeg.wasm)</h2>
+  <input id="file" type="file" accept=".mkv,video/*" />
+  <button id="start">Start (client)</button>
+  <pre id="log"></pre>
+  <a id="download" style="display:none">Download result</a>
+  <script type="module">
+    import { createFFmpeg, fetchFile } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.0/dist/ffmpeg.min.js';
+    const ffmpeg = createFFmpeg({ log: true });
+    const fileInput = document.getElementById('file');
+    const startBtn = document.getElementById('start');
+    const log = document.getElementById('log');
+    const dl = document.getElementById('download');
+    function append(s){ log.textContent += s + "\n"; }
+    startBtn.onclick = async () => {
+      if (!fileInput.files.length) return alert("Choose a file");
+      const f = fileInput.files[0];
+      append("Loading ffmpeg.wasm...");
+      await ffmpeg.load();
+      append("Writing file to FS...");
+      ffmpeg.FS('writeFile', 'input.mkv', await fetchFile(f));
+      append("Running ffmpeg...");
+      await ffmpeg.run('-i','input.mkv','-c:v','libx265','-preset','fast','-crf','28','-c:a','aac','out.mp4');
+      append("Reading output...");
+      const data = ffmpeg.FS('readFile', 'out.mp4');
+      const blob = new Blob([data.buffer], { type: 'video/mp4' });
+      dl.href = URL.createObjectURL(blob);
+      dl.download = 'out-h265.mp4';
+      dl.style.display = 'inline';
+      append("Done — click download.");
+    };
+  </script>
+</body>
+</html>
