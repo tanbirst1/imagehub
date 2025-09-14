@@ -1,9 +1,6 @@
 {
   "version": 2,
-  "functions": {
-    "api/convert.js": {
-      "memory": 2048,
-      "maxDuration": 300
-    }
-  }
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" }
+  ]
 }
