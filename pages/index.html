@@ -2,10 +2,10 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>MKV → H265 Converter</title>
+  <title>MKV → MP4 Converter (H.265 / fallback H.264)</title>
 </head>
 <body style="background:#111;color:#eee;font-family:sans-serif;padding:20px">
-  <h1>🎬 MKV → H.265 (MP4) Converter</h1>
+  <h1>🎬 MKV → MP4 Converter</h1>
   <input type="file" id="file" accept=".mkv,video/*" />
   <button id="convert">Convert</button>
   <pre id="log" style="background:#000;padding:10px;max-height:300px;overflow:auto"></pre>
@@ -25,6 +25,19 @@
       logEl.scrollTop = logEl.scrollHeight;
     }
 
+    async function runConversion(codec) {
+      log(`⚙️ Trying codec: ${codec}...`);
+      await ffmpeg.run(
+        "-i", "input.mkv",
+        "-c:v", codec,
+        "-preset", "fast",
+        "-crf", "28",
+        "-c:a", "aac",
+        "output.mp4"
+      );
+      log(`✅ Success with ${codec}`);
+    }
+
     convertBtn.onclick = async () => {
       if (!fileInput.files.length) return alert("Please choose a .mkv file");
       const f = fileInput.files[0];
@@ -35,20 +48,13 @@
       log("📥 Writing input file...");
       ffmpeg.FS("writeFile", "input.mkv", await fetchFile(f));
 
-      log("⚙️ Running conversion (this may take a while)...");
+      log("⚙️ Starting conversion...");
       try {
-        await ffmpeg.run(
-          "-i", "input.mkv",
-          "-c:v", "libx265",
-          "-preset", "fast",
-          "-crf", "28",
-          "-c:a", "aac",
-          "output.mp4"
-        );
+        await runConversion("libx265");
       } catch (err) {
-        log("❌ Error: " + err.message);
-        log("⚠️ Your ffmpeg.wasm build may not include libx265. Try changing -c:v libx264.");
-        return;
+        log("❌ libx265 not available, falling back to libx264...");
+        ffmpeg.FS("unlink", "output.mp4"); // cleanup failed output if any
+        await runConversion("libx264");
       }
 
       log("📤 Reading output...");
@@ -57,7 +63,7 @@
       const url = URL.createObjectURL(blob);
 
       dl.href = url;
-      dl.download = "converted-h265.mp4";
+      dl.download = "converted.mp4";
       dl.style.display = "block";
       log("✅ Done! Click the download link below.");
     };
