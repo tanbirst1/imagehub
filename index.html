@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MKV → MP4 Converter (H.265 / fallback H.264)</title>
+</head>
+<body style="background:#111;color:#eee;font-family:sans-serif;padding:20px">
+  <h1>🎬 MKV → MP4 Converter</h1>
+  <input type="file" id="file" accept=".mkv,video/*" />
+  <button id="convert">Convert</button>
+  <pre id="log" style="background:#000;padding:10px;max-height:300px;overflow:auto"></pre>
+  <a id="download" style="display:none;color:#0f0;font-weight:bold">⬇️ Download Converted File</a>
+
+  <script type="module">
+    import { createFFmpeg, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js";
+
+    const ffmpeg = createFFmpeg({ log: true });
+    const fileInput = document.getElementById("file");
+    const convertBtn = document.getElementById("convert");
+    const logEl = document.getElementById("log");
+    const dl = document.getElementById("download");
+
+    function log(msg) {
+      logEl.textContent += msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function runConversion(codec) {
+      log(`⚙️ Trying codec: ${codec}...`);
+      await ffmpeg.run(
+        "-i", "input.mkv",
+        "-c:v", codec,
+        "-preset", "fast",
+        "-crf", "28",
+        "-c:a", "aac",
+        "output.mp4"
+      );
+      log(`✅ Success with ${codec}`);
+    }
+
+    convertBtn.onclick = async () => {
+      if (!fileInput.files.length) return alert("Please choose a .mkv file");
+      const f = fileInput.files[0];
+      log("⏳ Loading ffmpeg.wasm...");
+      await ffmpeg.load();
+      log("✅ ffmpeg loaded");
+
+      log("📥 Writing input file...");
+      ffmpeg.FS("writeFile", "input.mkv", await fetchFile(f));
+
+      log("⚙️ Starting conversion...");
+      try {
+        await runConversion("libx265");
+      } catch (err) {
+        log("❌ libx265 not available, falling back to libx264...");
+        ffmpeg.FS("unlink", "output.mp4"); // cleanup failed output if any
+        await runConversion("libx264");
+      }
+
+      log("📤 Reading output...");
+      const data = ffmpeg.FS("readFile", "output.mp4");
+      const blob = new Blob([data.buffer], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+
+      dl.href = url;
+      dl.download = "converted.mp4";
+      dl.style.display = "block";
+      log("✅ Done! Click the download link below.");
+    };
+  </script>
+</body>
+</html>
