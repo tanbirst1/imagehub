@@ -1,13 +1,13 @@
 {
-  "name": "vercel-h265-convert",
+  "name": "blackseal-h265-converter",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "vercel dev",
-    "build": "echo \"no build step\""
+    "dev": "vercel dev",
+    "build": "echo \"no build\"",
+    "start": "vercel dev"
   },
   "dependencies": {
-    "formidable": "^3.7.1",
-    "ffmpeg-static": "^5.0.0"
+    "@ffmpeg/ffmpeg": "^0.12.10"
   }
 }
